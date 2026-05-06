@@ -1,12 +1,16 @@
 # Multimodal Fatigue Detection System
-<br>
+
+## Overview
+
 A real-time behavioral fatigue detection system using:
+
 - Eye Aspect Ratio (EAR)
 - Mouth Aspect Ratio (MAR)
-- Head posture/nod analysis
+- Head posture and nod analysis
 
 The system performs synchronized multimodal feature extraction using MediaPipe FaceMesh and generates ML-ready fatigue datasets through 10-second behavioral aggregation windows.
 
+---
 
 ## Features
 
@@ -21,16 +25,21 @@ The system performs synchronized multimodal feature extraction using MediaPipe F
 - Modular detector architecture
 - Real-time behavioral feature aggregation
 
+---
+
 ## Tech Stack
 
 - Python
 - OpenCV
 - MediaPipe FaceMesh
 - NumPy
-- CSV-based dataset pipeline
+- CSV dataset pipeline
+
+---
 
 ## Project Structure
 
+```text
 project/
 │
 ├── ear_detector.py
@@ -39,11 +48,14 @@ project/
 ├── main_camera_system.py
 │
 └── camera_fatigue_dataset.csv
+```
+
+---
 
 ## Future Work
 
 - Keyboard behavior analysis
 - Multimodal feature fusion
-- Fatigue classification using ML
+- Fatigue classification using machine learning
 - Real-time fatigue prediction
 - Dataset expansion and evaluation
