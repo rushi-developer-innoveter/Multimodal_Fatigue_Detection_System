@@ -87,3 +87,5 @@ multimodal-fatigue-detection/
 - Dataset expansion and evaluation
 - Model benchmarking and validation
 - Cross-user fatigue generalization
+- Cross-user fatigue generalization
+
