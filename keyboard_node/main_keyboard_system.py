@@ -22,7 +22,12 @@ from keyboard_detector import KeyboardTelemetryDetector
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 WINDOW_SECONDS = 10
-CSV_FILE       = "keyboard_fatigue_dataset.csv"
+# Orchestrator shutdown signal path (one level up from keyboard_node/)
+SHUTDOWN_FLAG = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", ".shutdown_flag"
+)
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(_SCRIPT_DIR, "keyboard_fatigue_dataset.csv")
 FIELDNAMES     = [
     "timestamp",
     "typing_speed",
@@ -135,8 +140,22 @@ def telemetry_loop(detector: KeyboardTelemetryDetector) -> None:
         # Wait for window duration, but check shutdown every 0.5s
         for _ in range(WINDOW_SECONDS * 2):
             if _shutdown_event.is_set():
-                return
+                break
+            if os.path.exists(SHUTDOWN_FLAG):
+                _shutdown_event.set()
+                break
             time.sleep(0.5)
+
+            # Flush final partial window before exit
+        if _shutdown_event.is_set():
+            with _label_lock:
+                label = _current_label
+            detector.baseline_locked = (label == 1)
+            features = detector.process(WINDOW_SECONDS)
+            features["fatigue_label"] = label
+            write_row(features)
+            print("[SYSTEM] Final keyboard telemetry window flushed.")
+            return
 
         with _label_lock:
             label = _current_label
@@ -215,7 +234,11 @@ def main() -> None:
     # Blocking keyboard listener — exits on ESC or exception
     try:
         with kb.Listener(on_press=build_press_handler(detector)) as listener:
-            listener.join()
+            while listener.running:
+                if _shutdown_event.is_set():
+                    listener.stop()
+                    break
+                time.sleep(0.5)
     except Exception as e:
         print(f"[LISTENER ERROR] {e}")
     finally:
