@@ -15,9 +15,9 @@ Execution Flow:
 Exit Controls (in the node windows):
     Camera   → press Q
     Keyboard → press ESC
-    Emergency → Ctrl+C in this window
+    Emergency → Ctrl+C in this window (Recommended)
 
-Author  : RAB INDUSTRIES / Rushi Maharaj
+Author  : Rushikesh Aryaveer (Bhujbal)
 Project : Multimodal Fatigue Detection System
 ══════════════════════════════════════════════════════════════════
 """
