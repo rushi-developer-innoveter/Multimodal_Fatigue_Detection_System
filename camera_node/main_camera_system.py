@@ -27,7 +27,9 @@ CSV_FILE = os.path.join(_SCRIPT_DIR, "camera_fatigue_dataset.csv")
 
 # Orchestrator shutdown signal path (one level up from camera_node/)
 SHUTDOWN_FLAG = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", ".shutdown_flag"
+    os.path.dirname(os.path.abspath(__file__)),
+    "..",
+    ".shutdown_flag"
 )
 
 CSV_COLUMNS = [
@@ -357,34 +359,98 @@ def main():
             print("[INFO] Orchestrator shutdown signal detected.")
             break
 
-        # ── POST-LOOP: flush partial window then release ────────────────
-        elapsed = time.time() - buffer_start
-        if elapsed >= 2.0:
-            eye_features = eye_detector.get_features()
-            mouth_features = mouth_detector.get_features()
-            head_features = head_detector.get_features()
+    # ── POST-LOOP: flush partial window then release ────────────────
 
-            if eye_features:
-                row = {
-                    "timestamp": round(time.time(), 3),
-                    "avg_ear": eye_features.get("avg_ear", 0.0),
-                    "min_ear": eye_features.get("min_ear", 0.0),
-                    "blink_rate": eye_features.get("blink_rate", 0.0),
-                    "fatigue_eye_events": eye_features.get("fatigue_eye_events", 0),
-                    "avg_mar": mouth_features.get("avg_mar", 0.0),
-                    "yawn_count": mouth_features.get("yawn_count", 0),
-                    "max_yawn_duration": mouth_features.get("max_yawn_duration", 0.0),
-                    "avg_head_metric": head_features.get("avg_head_metric", 0.0),
-                    "nod_count": head_features.get("nod_count", 0),
-                    "max_head_drop_duration": head_features.get("max_head_drop_duration", 0.0),
-                    "fatigue_label": manual_label,
-                }
-                append_csv_row(row)
-                print("[DATASET] Final partial window flushed to CSV.")
+    elapsed = time.time() - buffer_start
 
-        cap.release()
-        cv2.destroyAllWindows()
-        print("[SYSTEM] Camera node exited cleanly.")
+    if elapsed >= 2.0:
 
-    if __name__ == "__main__":
-        main()
+        eye_features = eye_detector.get_features()
+        mouth_features = mouth_detector.get_features()
+        head_features = head_detector.get_features()
+
+        if eye_features:
+
+            row = {
+
+                "timestamp":
+                    round(time.time(), 3),
+
+                "avg_ear":
+                    eye_features.get(
+                        "avg_ear",
+                        0.0
+                    ),
+
+                "min_ear":
+                    eye_features.get(
+                        "min_ear",
+                        0.0
+                    ),
+
+                "blink_rate":
+                    eye_features.get(
+                        "blink_rate",
+                        0.0
+                    ),
+
+                "fatigue_eye_events":
+                    eye_features.get(
+                        "fatigue_eye_events",
+                        0
+                    ),
+
+                "avg_mar":
+                    mouth_features.get(
+                        "avg_mar",
+                        0.0
+                    ),
+
+                "yawn_count":
+                    mouth_features.get(
+                        "yawn_count",
+                        0
+                    ),
+
+                "max_yawn_duration":
+                    mouth_features.get(
+                        "max_yawn_duration",
+                        0.0
+                    ),
+
+                "avg_head_metric":
+                    head_features.get(
+                        "avg_head_metric",
+                        0.0
+                    ),
+
+                "nod_count":
+                    head_features.get(
+                        "nod_count",
+                        0
+                    ),
+
+                "max_head_drop_duration":
+                    head_features.get(
+                        "max_head_drop_duration",
+                        0.0
+                    ),
+
+                "fatigue_label":
+                    manual_label
+            }
+
+            append_csv_row(row)
+
+            print("[DATASET] Final partial window flushed to CSV.")
+
+    cap.release()
+
+    cv2.destroyAllWindows()
+
+    print("[SYSTEM] Camera node exited cleanly.")
+
+
+if __name__ == "__main__":
+
+    main()
