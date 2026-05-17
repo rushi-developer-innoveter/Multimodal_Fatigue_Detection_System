@@ -357,7 +357,7 @@ def main():
             print("[INFO] Orchestrator shutdown signal detected.")
             break
 
-        # Flush partial telemetry window before releasing resources
+        # ── POST-LOOP: flush partial window then release ────────────────
         elapsed = time.time() - buffer_start
         if elapsed >= 2.0:
             eye_features = eye_detector.get_features()
@@ -386,6 +386,5 @@ def main():
         cv2.destroyAllWindows()
         print("[SYSTEM] Camera node exited cleanly.")
 
-
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        main()
