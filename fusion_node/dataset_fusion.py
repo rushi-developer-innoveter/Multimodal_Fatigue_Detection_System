@@ -37,9 +37,26 @@ import sys
 # PATHS
 # ─────────────────────────────────────────────────────────────────────────────
 
-CAMERA_CSV = "../camera_node/camera_fatigue_dataset.csv"
-KEYBOARD_CSV = "../keyboard_node/keyboard_fatigue_dataset.csv"
-OUTPUT_CSV = "multimodal_fatigue_dataset.csv"
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CAMERA_CSV = os.path.join(
+    _SCRIPT_DIR,
+    "..",
+    "camera_node",
+    "camera_fatigue_dataset.csv"
+)
+
+KEYBOARD_CSV = os.path.join(
+    _SCRIPT_DIR,
+    "..",
+    "keyboard_node",
+    "keyboard_fatigue_dataset.csv"
+)
+
+OUTPUT_CSV = os.path.join(
+    _SCRIPT_DIR,
+    "multimodal_fatigue_dataset.csv"
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SYNC CONFIG
@@ -227,8 +244,10 @@ def sync_nearest(
 
             # Since both lists are sorted and we've passed the tolerance
             # window, further rows can only be farther away.
-            if kbd_row["timestamp"] > cam_ts + tolerance:
-                break
+            if kbd_row['timestamp'] > cam_ts + tolerance:
+                if i not in used_kbd_indices:
+                    break
+                continue
 
         if best_idx is not None and best_delta <= tolerance:
             matched.append((cam_row, kbd_sorted[best_idx]))
