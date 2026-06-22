@@ -1,33 +1,4 @@
-"""
-dataset_fusion.py
-─────────────────────────────────────────────────────────────────────────────
-Multimodal Fusion Layer — Behavioral Fatigue Detection
-─────────────────────────────────────────────────────────────────────────────
 
-PURPOSE:
-    Synchronizes and merges camera and keyboard behavioral telemetry into a
-    single ML-ready multimodal dataset.
-
-INPUT:
-    camera_fatigue_dataset.csv   — camera node output (10s windows)
-    keyboard_fatigue_dataset.csv — keyboard node output (10s windows)
-
-OUTPUT:
-    multimodal_fatigue_dataset.csv — fused, timestamp-synchronized dataset
-
-SYNCHRONIZATION STRATEGY:
-    Nearest-timestamp matching within a configurable tolerance window.
-    Both nodes operate on 10-second behavioral windows; matches within
-    SYNC_TOLERANCE_SECONDS are accepted. Unmatched rows are discarded to
-    preserve label integrity.
-
-RULES:
-    ✔ Camera node is NOT modified.
-    ✔ Keyboard node is NOT modified.
-    ✔ Detector logic, thresholds, baselines — all untouched.
-    ✔ This file is the ONLY new artifact.
-─────────────────────────────────────────────────────────────────────────────
-"""
 
 import csv
 import os

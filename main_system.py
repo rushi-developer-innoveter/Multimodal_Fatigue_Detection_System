@@ -1,26 +1,3 @@
-"""
-main_system.py
-══════════════════════════════════════════════════════════════════
-Orchestration Launcher — Multimodal Fatigue Detection System
-
-Execution Flow:
-    1. Validate all node scripts exist
-    2. Launch camera node  (camera_node/main_camera_system.py)
-    3. Launch keyboard node (keyboard_node/main_keyboard_system.py)
-    4. Both run simultaneously in separate visible terminals
-    5. Wait until BOTH nodes terminate
-    6. Auto-trigger fusion (fusion_node/dataset_fusion.py)
-    7. Print final execution report
-
-Exit Controls (in the node windows):
-    Camera   → press Q
-    Keyboard → press ESC
-    Emergency → Ctrl+C in this window (Recommended)
-
-Author  : Rushikesh Aryaveer (Bhujbal)
-Project : Multimodal Fatigue Detection System
-══════════════════════════════════════════════════════════════════
-"""
 
 import os
 import sys

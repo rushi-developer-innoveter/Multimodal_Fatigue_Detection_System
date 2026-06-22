@@ -1,15 +1,4 @@
-"""
-main_keyboard_system.py
-Keyboard Telemetry Node — Orchestrator
 
-Controls:
-  F1  → Label current window: ALERT (0)
-  F2  → Label current window: FATIGUED (1)
-  ESC → Shutdown node cleanly
-
-Output:
-  keyboard_fatigue_dataset.csv  — ML-ready behavioral telemetry
-"""
 
 import time
 import csv

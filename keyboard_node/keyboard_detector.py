@@ -1,13 +1,3 @@
-"""
-keyboard_detector.py
-Privacy-Safe Adaptive Keyboard Telemetry Engine
-
-PRIVACY GUARANTEE:
-- NO typed content stored
-- NO key sequences stored
-- NO passwords captured
-- ONLY timing intervals and statistical aggregates
-"""
 
 import time
 import statistics
