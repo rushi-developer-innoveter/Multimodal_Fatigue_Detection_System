@@ -237,6 +237,13 @@ class HeadPostureDetector:
 
         self.in_warmup = False
 
+        # Safety: if no face was seen during the warmup window, baseline_metric
+        # was never initialised. Seed it from the first post-warmup sample —
+        # exactly what the warmup branch above would have done on its first hit.
+        # Prevents a `float - None` TypeError that crashes the camera node.
+        if self.baseline_metric is None:
+            self.baseline_metric = self.metric
+
         if abs(self.metric - self.baseline_metric) < 0.02:
 
             self.baseline_metric = (

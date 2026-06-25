@@ -59,8 +59,9 @@ The architecture is designed for future fatigue classification using machine lea
 multimodal-fatigue-detection/
 │
 ├── README.md
-├── LICENSE
+├── requirements.txt
 ├── .gitignore
+├── main_system.py                # Orchestrator — run this
 │
 ├── camera_node/
 │   ├── ear_detector.py
@@ -74,8 +75,31 @@ multimodal-fatigue-detection/
 │   ├── main_keyboard_system.py
 │   └── keyboard_fatigue_dataset.csv
 │
-└── datasets/
+└── fusion_node/
+    ├── dataset_fusion.py
+    └── multimodal_fatigue_dataset.csv
 ```
+
+---
+
+## Installation & Usage
+
+```bash
+# 1. Install dependencies (Python 3.10–3.12 recommended)
+pip install -r requirements.txt
+
+# 2. Run the full pipeline (launches camera + keyboard nodes, then fuses)
+python main_system.py
+```
+
+Controls during a session:
+
+- **Camera window** — `0`/`1` set the manual fatigue label, `Q` quits.
+- **Keyboard node** — `F1`/`F2` set the label (ALERT/FATIGUED), `ESC` quits.
+
+When both nodes exit, the fusion node automatically merges the two CSVs into
+`fusion_node/multimodal_fatigue_dataset.csv`. Let both nodes run for at least
+~10 s so the first aggregation window is written.
 
 ---
 
@@ -88,4 +112,3 @@ multimodal-fatigue-detection/
 - Model benchmarking and validation
 - Cross-user fatigue generalization
 - Cross-user fatigue generalization
-

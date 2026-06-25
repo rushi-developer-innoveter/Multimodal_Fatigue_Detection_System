@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -342,6 +341,13 @@ def main() -> None:
 
     print()
     log("All paths verified. Ready to launch.")
+
+    # Restart safety: a force-killed prior run can leave a stale .shutdown_flag
+    # behind, which would make freshly launched nodes detect it and exit
+    # immediately. Clear it before launching anything.
+    if os.path.isfile(SHUTDOWN_FLAG):
+        log("[CLEANUP] Removing stale shutdown flag from a previous run.")
+    _cleanup_flag()
 
     # ── Launch nodes ───────────────────────────────────────────────
     section("LAUNCHING NODES")
