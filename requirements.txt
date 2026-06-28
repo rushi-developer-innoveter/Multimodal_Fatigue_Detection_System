@@ -2,3 +2,5 @@ mediapipe==0.10.14
 opencv-python==4.10.0.84
 numpy==1.26.4
 pynput==1.7.7
+scikit-learn==1.7.2
+joblib==1.4.2

@@ -1,6 +1,8 @@
 import csv
 import os
+import sys
 import time
+import warnings
 
 import cv2
 import mediapipe as mp
@@ -31,6 +33,113 @@ SHUTDOWN_FLAG = os.path.join(
     "..",
     ".shutdown_flag"
 )
+
+# ─────────────────────────────────────────────
+# LIVE ML PREDICTION (additive, optional, fails gracefully)
+# ─────────────────────────────────────────────
+# Reads the keyboard node's CSV directly to fuse a feature vector live, using
+# the same sync tolerance as fusion_node/dataset_fusion.py. Does not modify
+# any detector logic, thresholds, or the camera CSV schema -- this only adds
+# an on-screen overlay. If the model files are missing or joblib isn't
+# installed, the system runs exactly as before with no overlay shown.
+KEYBOARD_CSV = os.path.join(_SCRIPT_DIR, "..", "keyboard_node", "keyboard_fatigue_dataset.csv")
+MODEL_PATH = os.path.join(_SCRIPT_DIR, "..", "fusion_node", "fatigue_model.pkl")
+META_PATH = os.path.join(_SCRIPT_DIR, "..", "fusion_node", "fatigue_model_meta.pkl")
+ML_SYNC_TOLERANCE_SECONDS = 7.0  # widened from 5.0: MediaPipe's import/init time
+# delays the camera node's window timer relative to the keyboard node's by
+# ~5s in practice (observed consistently, not random jitter), so 5.0s was
+# too tight for the live overlay. The saved/fused dataset is unaffected --
+# dataset_fusion.py uses its own separate tolerance and full nearest-match
+# search across all rows, not just the latest one.
+
+try:
+    import joblib
+    _ml_model = joblib.load(MODEL_PATH)
+    _ml_meta = joblib.load(META_PATH)
+    ML_AVAILABLE = True
+    print("[ML] Fatigue model loaded -- live predictions enabled.")
+except Exception as e:
+    _ml_model = None
+    _ml_meta = None
+    ML_AVAILABLE = False
+    print(f"[ML] Model not loaded ({e}) -- running without live predictions.")
+
+
+def get_latest_keyboard_row():
+    """
+    Read the last row of the keyboard node's CSV. Returns a dict or None if
+    the file doesn't exist yet or has no data rows. Read-only, never writes.
+    """
+    if not os.path.exists(KEYBOARD_CSV):
+        return None
+    try:
+        with open(KEYBOARD_CSV, "r", newline="", encoding="utf-8") as f:
+            reader = list(csv.DictReader(f))
+        if not reader:
+            return None
+        return reader[-1]
+    except Exception:
+        return None
+
+
+def predict_live(camera_row):
+    """
+    Attempt a live ML prediction by fusing the just-computed camera window
+    with the most recent keyboard window, if it's within sync tolerance.
+    Returns (label_text, color, confidence) or (None, None, None) if a
+    prediction isn't currently possible (no model, no keyboard data yet,
+    or the two windows are too far apart in time).
+
+    Prints a one-line diagnostic to the console explaining exactly why a
+    prediction wasn't made, so this is debuggable instead of silently
+    showing "waiting for sync" with no clue why.
+    """
+    if not ML_AVAILABLE:
+        return None, None, None
+
+    kbd_row = get_latest_keyboard_row()
+    if kbd_row is None:
+        print("[ML DEBUG] No keyboard data found yet at:", KEYBOARD_CSV)
+        return None, None, None
+
+    try:
+        delta = abs(camera_row["timestamp"] - float(kbd_row["timestamp"]))
+    except (KeyError, ValueError, TypeError) as e:
+        print(f"[ML DEBUG] Could not read timestamp from keyboard row: {e} -- row was: {kbd_row}")
+        return None, None, None
+
+    if delta > ML_SYNC_TOLERANCE_SECONDS:
+        print(f"[ML DEBUG] Camera/keyboard windows too far apart: {delta:.1f}s (tolerance is {ML_SYNC_TOLERANCE_SECONDS}s)")
+        return None, None, None
+
+    try:
+        feature_order = _ml_meta["feature_order"]
+        clip_caps = _ml_meta["clip_caps"]
+
+        merged = dict(camera_row)
+        merged.update(kbd_row)
+
+        vector = []
+        for feat in feature_order:
+            val = float(merged[feat])
+            if feat in clip_caps:
+                val = min(val, clip_caps[feat])
+            vector.append(val)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            proba = _ml_model.predict_proba([vector])[0]
+        pred = int(proba[1] >= 0.5)
+        confidence = proba[pred]
+
+        label_text = "FATIGUED" if pred == 1 else "ALERT"
+        color = (0, 0, 255) if pred == 1 else (0, 255, 0)
+        return label_text, color, confidence
+    except Exception as e:
+        print(f"[ML DEBUG] Prediction failed unexpectedly: {type(e).__name__}: {e}")
+        return None, None, None
+
+
 
 CSV_COLUMNS = [
     "timestamp",
@@ -106,9 +215,34 @@ def main():
 
         return
 
+    # Apply target resolution/FPS BEFORE any read happens. Changing these
+    # properties immediately after a read (rather than before) caused a
+    # native OpenCV buffer-size crash on some Windows webcam drivers --
+    # setting them first, then probing, avoids that entirely.
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAP_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAP_HEIGHT)
     cap.set(cv2.CAP_PROP_FPS, FPS)
+
+    # Windows-specific safety net: some cameras "open" successfully but never
+    # deliver frames on the default MSMF backend (handle opens, cap.read()
+    # fails repeatedly). DSHOW is the standard fix for that exact symptom.
+    # Only triggers if a real read failure occurs — has no effect when the
+    # camera already works, so behavior is unchanged for working setups.
+    if sys.platform == "win32":
+        try:
+            ret_probe, _ = cap.read()
+        except cv2.error:
+            ret_probe = False
+        if not ret_probe:
+            cap.release()
+            print("[SYSTEM] Default backend failed to read a frame, retrying with DSHOW...")
+            cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+            if not cap.isOpened():
+                print("[FATAL] Cannot open webcam.")
+                return
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAP_WIDTH)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAP_HEIGHT)
+            cap.set(cv2.CAP_PROP_FPS, FPS)
 
     # CAMERA NODE INTEGRATION
     face_mesh = mp.solutions.face_mesh.FaceMesh(
@@ -129,12 +263,20 @@ def main():
 
     manual_label = 0
 
+    # Live ML prediction overlay state -- updated once per 10s window,
+    # drawn every frame until the next update.
+    ml_label_text = "ML: warming up..."
+    ml_color = (200, 200, 200)
+
     print("[SYSTEM] Camera fatigue system running.")
 
     try:
         while True:
 
-            ret, frame = cap.read()
+            try:
+                ret, frame = cap.read()
+            except cv2.error:
+                ret, frame = False, None
 
             if not ret:
 
@@ -240,6 +382,16 @@ def main():
                 2
             )
 
+            cv2.putText(
+                frame,
+                ml_label_text,
+                (850, 160),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                ml_color,
+                2
+            )
+
             elapsed = time.time() - buffer_start
 
             # 10-SECOND AGGREGATION
@@ -330,6 +482,14 @@ def main():
 
                 print("\n[DATASET ROW]")
                 print(row)
+
+                pred_label, pred_color, pred_conf = predict_live(row)
+                if pred_label is not None:
+                    ml_label_text = f"ML: {pred_label} ({pred_conf*100:.0f}%)"
+                    ml_color = pred_color
+                else:
+                    ml_label_text = "ML: waiting for sync..."
+                    ml_color = (200, 200, 200)
 
                 eye_detector.reset_buffer()
                 mouth_detector.reset_buffer()
