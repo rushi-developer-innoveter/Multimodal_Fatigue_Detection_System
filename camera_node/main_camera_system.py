@@ -20,6 +20,7 @@ CAP_WIDTH = 1280
 CAP_HEIGHT = 720
 
 FPS = 30
+SHOW_CAMERA_WINDOW = os.environ.get("SHOW_CAMERA_WINDOW", "1") == "1"
 
 # ─────────────────────────────────────────────
 # CSV CONFIG
@@ -341,56 +342,57 @@ def main():
                 else "ALERT"
             )
 
-            # OVERLAY
-            eye_detector.draw_overlay(frame)
+            if SHOW_CAMERA_WINDOW:
+                # OVERLAY
+                eye_detector.draw_overlay(frame)
 
-            mouth_detector.draw_overlay(frame)
+                mouth_detector.draw_overlay(frame)
 
-            head_detector.draw_overlay(frame)
+                head_detector.draw_overlay(frame)
 
-            cv2.putText(
-                frame,
-                "SYSTEM",
-                (850, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 255),
-                2
-            )
+                cv2.putText(
+                    frame,
+                    "SYSTEM",
+                    (850, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (0, 255, 255),
+                    2
+                )
 
-            cv2.putText(
-                frame,
-                f"Status: {system_status}",
-                (850, 80),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (
-                    (0, 0, 255)
-                    if system_fatigued
-                    else (0, 255, 0)
-                ),
-                2
-            )
+                cv2.putText(
+                    frame,
+                    f"Status: {system_status}",
+                    (850, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (
+                        (0, 0, 255)
+                        if system_fatigued
+                        else (0, 255, 0)
+                    ),
+                    2
+                )
 
-            cv2.putText(
-                frame,
-                f"Manual Label: {manual_label}",
-                (850, 120),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (255, 255, 255),
-                2
-            )
+                cv2.putText(
+                    frame,
+                    f"Manual Label: {manual_label}",
+                    (850, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (255, 255, 255),
+                    2
+                )
 
-            cv2.putText(
-                frame,
-                ml_label_text,
-                (850, 160),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                ml_color,
-                2
-            )
+                cv2.putText(
+                    frame,
+                    ml_label_text,
+                    (850, 160),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    ml_color,
+                    2
+                )
 
             elapsed = time.time() - buffer_start
 
@@ -497,23 +499,24 @@ def main():
 
                 buffer_start = time.time()
 
-            cv2.imshow(
-                "Unified Fatigue Camera System",
-                frame
-            )
+            if SHOW_CAMERA_WINDOW:
+                cv2.imshow(
+                    "Unified Fatigue Camera System",
+                    frame
+                )
 
-            key = cv2.waitKey(1) & 0xFF
+                key = cv2.waitKey(1) & 0xFF
 
-            # manual labels
-            if key == ord("0"):
-                manual_label = 0
+                # manual labels
+                if key == ord("0"):
+                    manual_label = 0
 
-            elif key == ord("1"):
-                manual_label = 1
+                elif key == ord("1"):
+                    manual_label = 1
 
-            elif key == ord("q"):
-                print("[INFO] Quit signal received.")
-                break
+                elif key == ord("q"):
+                    print("[INFO] Quit signal received.")
+                    break
 
             # Orchestrator-controlled shutdown
             if os.path.exists(SHUTDOWN_FLAG):
