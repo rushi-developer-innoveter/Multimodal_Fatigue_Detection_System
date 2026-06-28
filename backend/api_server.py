@@ -46,9 +46,10 @@ CAMERA_INDEX = 0
 CAP_WIDTH = 1280
 CAP_HEIGHT = 720
 FPS = 30
+SHOW_CAMERA_WINDOW = os.environ.get("SHOW_CAMERA_WINDOW", "0") == "1"
 
 BUFFER_WINDOW = 10.0               # seconds per aggregation window
-ALARM_THRESHOLD_MINUTES = 3.0     # sustained fatigue before alarm fires
+ALARM_THRESHOLD_MINUTES = 3.0      # sustained fatigue before alarm fires
 HISTORY_MAXLEN = 60               # rolling history window (readings)
 CAP_MAX_CONSECUTIVE_FAILS = 30    # camera read failures before exit
 
@@ -204,6 +205,10 @@ def _capture_loop() -> None:
     fatigued_window = deque(maxlen=_ALARM_THRESHOLD_WINDOWS)  # rolling 1/0 per window
     alarm_fired = False          # guards against re-firing while ratio stays above threshold
 
+    _ov_status = "starting"
+    _ov_color = (200, 200, 200)
+    _ov_prob = None
+
     print("[SYSTEM] Capture loop running.")
 
     try:
@@ -274,6 +279,9 @@ def _capture_loop() -> None:
                         })
                         if len(_history) > HISTORY_MAXLEN:
                             _history.pop(0)
+                    _ov_status = "NO_FACE_DETECTED"
+                    _ov_color = (200, 200, 200)
+                    _ov_prob = None
                     continue
 
                 # ── Merge features ────────────────────────────────────────────
@@ -345,6 +353,17 @@ def _capture_loop() -> None:
                     f"[WINDOW] ts={ts}  status={status}  prob={prob}  "
                     f"consec={consecutive_fatigued}  ratio={fatigued_ratio:.0%}({len(fatigued_window)}/{_ALARM_THRESHOLD_WINDOWS})"
                 )
+                if SHOW_CAMERA_WINDOW:
+                    _ov_status = status
+                    _ov_color = (0, 0, 255) if label == "FATIGUED" else (0, 255, 0) if label == "ALERT" else (200, 200, 200)
+                    _ov_prob = prob
+
+            if SHOW_CAMERA_WINDOW:
+                prob_text = f"{_ov_prob:.0%}" if _ov_prob is not None else "--"
+                cv2.putText(frame, _ov_status, (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, _ov_color, 2)
+                cv2.putText(frame, f"Prob: {prob_text}", (30, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, _ov_color, 2)
+                cv2.imshow("Fatigue API Monitor", frame)
+                cv2.waitKey(1)
 
     finally:
         cap.release()
@@ -357,6 +376,8 @@ def _capture_loop() -> None:
                 kbd_listener.stop()
             except Exception:
                 pass
+        if SHOW_CAMERA_WINDOW:
+            cv2.destroyAllWindows()
         print("[SYSTEM] Capture loop exited.")
 
 
