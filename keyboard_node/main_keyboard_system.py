@@ -187,6 +187,11 @@ def build_press_handler(detector: KeyboardTelemetryDetector):
             if key == kb.Key.esc:
                 print("\n[SYSTEM] ESC received — shutting down...")
                 _shutdown_event.set()
+                try:
+                    with open(SHUTDOWN_FLAG, "w") as f:
+                        f.write("shutdown")
+                except OSError as e:
+                    print(f"[WARN] Could not write shutdown flag: {e}")
                 return False   # Stops pynput listener
 
         except AttributeError:

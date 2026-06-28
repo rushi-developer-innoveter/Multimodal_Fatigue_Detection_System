@@ -80,10 +80,41 @@ def validate_paths() -> bool:
 
 
 # ══════════════════════════════════════════════════════════════════
+# INTERACTIVE PROMPTS
+# ══════════════════════════════════════════════════════════════════
+
+def prompt_camera_window() -> bool:
+    """
+    Ask the user whether to show the camera preview window.
+    Y / y / Enter → True (show window, default).
+    N / n         → False (headless).
+    Anything else → re-prompts.
+    """
+    while True:
+        try:
+            answer = input("  Show camera preview window? [Y/n]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            # Non-interactive or Ctrl+C at prompt — default to showing window
+            print()
+            return True
+
+        if answer in ("", "y", "Y"):
+            return True
+        if answer in ("n", "N"):
+            return False
+        print("  Please enter Y or N.")
+
+
+# ══════════════════════════════════════════════════════════════════
 # NODE LAUNCHER
 # ══════════════════════════════════════════════════════════════════
 
-def launch_node(script_path: str, cwd: str, label: str) -> subprocess.Popen:
+def launch_node(
+    script_path: str,
+    cwd: str,
+    label: str,
+    env: dict = None,
+) -> subprocess.Popen:
     """
     Launch a node script in a separate visible terminal window.
 
@@ -93,6 +124,9 @@ def launch_node(script_path: str, cwd: str, label: str) -> subprocess.Popen:
 
     cwd is set to the node's own directory so bare relative imports
     (e.g. `from ear_detector import ...`) resolve correctly.
+
+    env, if provided, is passed as the child's environment; otherwise the
+    child inherits the parent process environment unchanged.
     """
 
     if IS_WINDOWS:
@@ -100,6 +134,7 @@ def launch_node(script_path: str, cwd: str, label: str) -> subprocess.Popen:
             [PYTHON, script_path],
             cwd=cwd,
             creationflags=subprocess.CREATE_NEW_CONSOLE,
+            env=env,
         )
         return proc
 
@@ -117,14 +152,14 @@ def launch_node(script_path: str, cwd: str, label: str) -> subprocess.Popen:
 
     for cmd in terminal_cmds:
         try:
-            proc = subprocess.Popen(cmd, cwd=cwd)
+            proc = subprocess.Popen(cmd, cwd=cwd, env=env)
             return proc
         except FileNotFoundError:
             continue
 
     # Last resort: run without a separate window
     log(f"[WARN] No terminal emulator found — running {label} inline.")
-    proc = subprocess.Popen([PYTHON, script_path], cwd=cwd)
+    proc = subprocess.Popen([PYTHON, script_path], cwd=cwd, env=env)
     return proc
 
 
@@ -136,6 +171,7 @@ def wait_for_both(
     cam_proc: subprocess.Popen,
     kbd_proc: subprocess.Popen,
     poll_interval: float = 0.5,
+    show_camera_window: bool = True,
 ) -> tuple:
     """
     Block until both nodes have terminated.
@@ -145,7 +181,10 @@ def wait_for_both(
     Returns (camera_exit_code, keyboard_exit_code).
     """
     log("Monitoring nodes — waiting for both to finish ...")
-    log("  Camera   -> press Q   in the camera window to stop")
+    if show_camera_window:
+        log("  Camera   -> press Q   in the camera window to stop")
+    else:
+        log("  Camera   -> running headless; press Ctrl+C HERE to stop both nodes")
     log("  Keyboard -> press ESC in the keyboard window to stop")
     print()
 
@@ -349,6 +388,17 @@ def main() -> None:
         log("[CLEANUP] Removing stale shutdown flag from a previous run.")
     _cleanup_flag()
 
+    # ── Camera window preference ───────────────────────────────────
+    print()
+    show_camera_window = prompt_camera_window()
+    if show_camera_window:
+        log("[INFO] Camera window: ON")
+    else:
+        log("[INFO] Camera window: OFF (running headless)")
+
+    camera_env = os.environ.copy()
+    camera_env["SHOW_CAMERA_WINDOW"] = "1" if show_camera_window else "0"
+
     # ── Launch nodes ───────────────────────────────────────────────
     section("LAUNCHING NODES")
 
@@ -357,6 +407,7 @@ def main() -> None:
         CAMERA_SCRIPT,
         CAMERA_NODE_DIR,
         "Camera Fatigue Node",
+        env=camera_env,
     )
     log(f"  Camera node started   (PID {cam_proc.pid})")
 
@@ -378,7 +429,9 @@ def main() -> None:
     section("RUNTIME  —  WAITING FOR NODES")
 
     try:
-        cam_exit, kbd_exit = wait_for_both(cam_proc, kbd_proc)
+        cam_exit, kbd_exit = wait_for_both(
+            cam_proc, kbd_proc, show_camera_window=show_camera_window
+        )
 
     except KeyboardInterrupt:
         print()
