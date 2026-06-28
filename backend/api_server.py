@@ -96,18 +96,15 @@ _history: list = []   # list of {timestamp, fatigue_probability, fatigue_label}
 # ─────────────────────────────────────────────────────────────────────────────
 # ALARM
 # ─────────────────────────────────────────────────────────────────────────────
-def _play_alarm() -> None:
-    """Play a system beep. Failure never crashes detection."""
+def _play_alarm_sound():
     try:
         if sys.platform == "win32":
             import winsound
-            winsound.Beep(1000, 600)
+            winsound.Beep(1000, 5000)
         else:
-            sys.stdout.write("\a")
-            sys.stdout.flush()
-    except Exception:
-        pass
-
+            print("\a" * 5)
+    except Exception as e:
+        print(f"[ALARM] Could not play sound: {e}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PREDICTION
@@ -309,7 +306,7 @@ def _capture_loop() -> None:
 
                 if alarm_triggered and not alarm_fired:
                     alarm_fired = True
-                    threading.Thread(target=_play_alarm, daemon=True).start()
+                    threading.Thread(target=_play_alarm_sound, daemon=True).start()
                     print(
                         f"[ALARM] Rolling fatigue ratio {fatigued_ratio:.0%} over last "
                         f"{_ALARM_THRESHOLD_WINDOWS} windows — alarm triggered."
