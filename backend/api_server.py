@@ -20,6 +20,7 @@ import warnings
 
 import cv2
 import mediapipe as mp
+from collections import deque
 from flask import Flask, jsonify
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -83,9 +84,10 @@ _state: dict = {
     "fatigue_probability": None,                   # float [0, 1] | None
     "features": {},                                # merged feature dict for this window
     "timestamp": None,                             # float (Unix epoch)
-    "alarm_triggered": False,                      # True once sustained threshold hit
+    "alarm_triggered": False,                      # True once rolling-window threshold hit
     "consecutive_fatigued_windows": 0,
     "alarm_threshold_windows": _ALARM_THRESHOLD_WINDOWS,
+    "fatigued_ratio_in_window": 0.0,              # fraction of last 18 windows that were FATIGUED
 }
 
 _history: list = []   # list of {timestamp, fatigue_probability, fatigue_label}
@@ -201,8 +203,9 @@ def _capture_loop() -> None:
 
     buffer_start = time.time()
     consecutive_failures = 0
-    consecutive_fatigued = 0
-    alarm_fired = False          # guards against re-firing on every window past threshold
+    consecutive_fatigued = 0    # streak counter — for reporting only, no longer gates alarm
+    fatigued_window = deque(maxlen=_ALARM_THRESHOLD_WINDOWS)  # rolling 1/0 per window
+    alarm_fired = False          # guards against re-firing while ratio stays above threshold
 
     print("[SYSTEM] Capture loop running.")
 
@@ -256,6 +259,7 @@ def _capture_loop() -> None:
                 # ── No-face window ────────────────────────────────────────────
                 if not eye_f and not mouth_f and not head_f:
                     consecutive_fatigued = 0
+                    fatigued_window.clear()
                     alarm_fired = False
                     with _lock:
                         _state["status"] = "NO_FACE_DETECTED"
@@ -265,6 +269,7 @@ def _capture_loop() -> None:
                         _state["timestamp"] = ts
                         _state["alarm_triggered"] = False
                         _state["consecutive_fatigued_windows"] = 0
+                        _state["fatigued_ratio_in_window"] = 0.0
                         _history.append({
                             "timestamp": ts,
                             "fatigue_probability": None,
@@ -285,17 +290,31 @@ def _capture_loop() -> None:
                 label, prob = _predict(merged)
 
                 # ── Alarm logic ───────────────────────────────────────────────
-                alarm_triggered = False
+                # Update streak counter (reporting only).
                 if label == "FATIGUED":
                     consecutive_fatigued += 1
-                    alarm_triggered = consecutive_fatigued >= _ALARM_THRESHOLD_WINDOWS
-                    if alarm_triggered and not alarm_fired:
-                        alarm_fired = True
-                        threading.Thread(target=_play_alarm, daemon=True).start()
-                        print(f"[ALARM] Sustained fatigue for {ALARM_THRESHOLD_MINUTES} minutes — alarm triggered.")
                 else:
-                    # ALERT or prediction unavailable — reset alarm state
                     consecutive_fatigued = 0
+
+                # Rolling-window alarm: requires a full window of history and
+                # at least 70 % of readings FATIGUED. A single stray ALERT
+                # reading barely affects the ratio instead of wiping the streak.
+                fatigued_window.append(1 if label == "FATIGUED" else 0)
+                window_full = len(fatigued_window) == _ALARM_THRESHOLD_WINDOWS
+                fatigued_ratio = (
+                    sum(fatigued_window) / len(fatigued_window)
+                    if fatigued_window else 0.0
+                )
+                alarm_triggered = window_full and fatigued_ratio >= 0.70
+
+                if alarm_triggered and not alarm_fired:
+                    alarm_fired = True
+                    threading.Thread(target=_play_alarm, daemon=True).start()
+                    print(
+                        f"[ALARM] Rolling fatigue ratio {fatigued_ratio:.0%} over last "
+                        f"{_ALARM_THRESHOLD_WINDOWS} windows — alarm triggered."
+                    )
+                elif not alarm_triggered:
                     alarm_fired = False
 
                 status = label if label is not None else "starting"
@@ -316,6 +335,7 @@ def _capture_loop() -> None:
                     _state["timestamp"] = ts
                     _state["alarm_triggered"] = alarm_triggered
                     _state["consecutive_fatigued_windows"] = consecutive_fatigued
+                    _state["fatigued_ratio_in_window"] = round(fatigued_ratio, 3)
                     _history.append({
                         "timestamp": ts,
                         "fatigue_probability": prob,
@@ -324,7 +344,10 @@ def _capture_loop() -> None:
                     if len(_history) > HISTORY_MAXLEN:
                         _history.pop(0)
 
-                print(f"[WINDOW] ts={ts}  status={status}  prob={prob}  consec_fatigued={consecutive_fatigued}")
+                print(
+                    f"[WINDOW] ts={ts}  status={status}  prob={prob}  "
+                    f"consec={consecutive_fatigued}  ratio={fatigued_ratio:.0%}({len(fatigued_window)}/{_ALARM_THRESHOLD_WINDOWS})"
+                )
 
     finally:
         cap.release()
@@ -371,9 +394,10 @@ def status():
         fatigue_probability       -- float [0, 1] | null
         features                  -- dict of raw feature values for this window
         timestamp                 -- Unix epoch float | null
-        alarm_triggered           -- bool, true once 3-min sustained fatigue threshold hit
-        consecutive_fatigued_windows -- int
+        alarm_triggered           -- bool, true when ≥70 % of last 18 windows are FATIGUED
+        consecutive_fatigued_windows -- int (streak counter, informational only)
         alarm_threshold_windows   -- int (18 for 3-min default)
+        fatigued_ratio_in_window  -- float [0, 1], fraction of last N windows that were FATIGUED
     """
     with _lock:
         return jsonify(dict(_state))
