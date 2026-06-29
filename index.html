@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatigue Detection Dashboard</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- ================= HEADER ================= -->
+
+    <header>
+
+        <div>
+
+            <h1>Fatigue Detection Dashboard</h1>
+
+            <p>
+                Live monitoring using Flask API
+            </p>
+
+        </div>
+
+        <div class="header-right">
+
+            <div class="dark-mode">
+
+                <button id="themeBtn">
+
+                    Light Mode
+
+                </button>
+
+            </div>
+
+            <div class="updated">
+
+                Last Updated
+
+                <span id="timestamp">--</span>
+
+            </div>
+
+
+
+        </div>
+
+    </header>
+
+    <!-- ================= SUMMARY ================= -->
+
+    <section class="summary">
+
+        <div class="card">
+
+            <h3>Status</h3>
+
+            <h2 id="status">
+                Loading...
+            </h2>
+
+        </div>
+
+        <div class="card">
+
+            <h3>Fatigue Probability</h3>
+
+            <h2 id="probability">
+                --
+            </h2>
+
+        </div>
+
+        <div class="card">
+
+            <h3>Alarm</h3>
+
+            <h2 id="alarm">
+                --
+            </h2>
+
+        </div>
+
+        <div class="card">
+
+            <h3>Fatigue Ratio</h3>
+
+            <h2 id="ratio">
+                --
+            </h2>
+
+        </div>
+
+    </section>
+
+    <!-- ================= CHART ================= -->
+
+    <section class="chart-card">
+
+        <h2>
+            Fatigue Trend
+        </h2>
+
+        <canvas id="historyChart"></canvas>
+
+    </section>
+
+    <!-- ================= FEATURES ================= -->
+
+    <section class="feature-section">
+
+        <div class="feature-header">
+
+            <h2>
+                Live Features
+            </h2>
+
+            <button id="refreshBtn">
+                Refresh
+            </button>
+
+        </div>
+
+        <div
+                class="feature-grid"
+                id="featureGrid">
+
+        </div>
+
+    </section>
+
+</div>
+
+<script src="./script.js"></script>
+
+</body>
+</html>
