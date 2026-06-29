@@ -49,7 +49,7 @@ FPS = 30
 SHOW_CAMERA_WINDOW = os.environ.get("SHOW_CAMERA_WINDOW", "0") == "1"
 
 BUFFER_WINDOW = 10.0               # seconds per aggregation window
-ALARM_THRESHOLD_MINUTES = 0.5      # sustained fatigue before alarm fires
+ALARM_THRESHOLD_MINUTES = 3.0      # sustained fatigue before alarm fires
 HISTORY_MAXLEN = 60               # rolling history window (readings)
 CAP_MAX_CONSECUTIVE_FAILS = 30    # camera read failures before exit
 
