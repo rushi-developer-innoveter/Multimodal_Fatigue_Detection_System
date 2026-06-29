@@ -9,7 +9,7 @@ A real-time multimodal behavioral fatigue detection system using:
 - Head posture and nod analysis
 - Privacy-safe keyboard telemetry
 
-The system fuses camera and keyboard signals into 10-second aggregation windows, feeds them into a trained Random Forest classifier (~75% accuracy, ROC-AUC 0.73), and exposes live predictions via a REST API for frontend consumption.
+The system fuses camera and keyboard signals into 10-second aggregation windows, feeds them into a trained Random Forest classifier (~75% accuracy, ROC-AUC 0.73), and exposes live predictions via a REST API. A live dashboard (`frontend/`) consumes that API to show real-time status, trend graphs, and feature values.
 
 ---
 
@@ -41,6 +41,15 @@ The system fuses camera and keyboard signals into 10-second aggregation windows,
 - REST API for frontend integration (`backend/api_server.py`)
 - Optional live camera preview with prediction overlay for demos
 
+### Frontend Dashboard
+- Live status card (ALERT / FATIGUED / NO_FACE_DETECTED)
+- Real-time fatigue probability and alarm state
+- Rolling fatigue-ratio indicator (the same value that drives the alarm)
+- Live trend graph (Chart.js) plotting fatigue probability over time
+- Live feature grid showing all 19 raw model inputs
+- Light/dark mode toggle (preference saved locally)
+- Polls the backend every second; no build step required (plain HTML/CSS/JS)
+
 ### System Features
 - ML-ready CSV dataset generation
 - Modular detector architecture
@@ -58,6 +67,7 @@ The system fuses camera and keyboard signals into 10-second aggregation windows,
 - pynput
 - scikit-learn / joblib (Random Forest classifier)
 - Flask (REST API for frontend integration)
+- HTML / CSS / JavaScript + Chart.js (frontend dashboard)
 - CSV dataset pipeline
 
 ---
@@ -90,8 +100,13 @@ Multimodal_Fatigue_Detection_System/
 │   ├── fatigue_model.pkl         # trained Random Forest model
 │   └── fatigue_model_meta.pkl    # feature_order + clip_caps
 │
-└── backend/
-    └── api_server.py             # Flask REST API for the frontend
+├── backend/
+│   └── api_server.py             # Flask REST API for the frontend
+│
+└── frontend/
+    ├── index.html                # Dashboard layout
+    ├── script.js                 # Polls the API every second, renders chart/cards
+    └── style.css
 ```
 
 ---
@@ -132,7 +147,7 @@ When both nodes exit, the fusion node automatically merges the two CSVs into
 `fusion_node/multimodal_fatigue_dataset.csv`. Let both nodes run for at least
 ~10 s so the first aggregation window is written.
 
-### API server (for frontend)
+### API server (for the dashboard / any frontend)
 
 ```bash
 # Run from the repo root — do NOT cd into backend/
@@ -189,7 +204,24 @@ Array of objects: `{timestamp, fatigue_probability, fatigue_label}`.
 Oldest entry first, capped at 60 entries.
 
 All endpoints include `Access-Control-Allow-Origin: *` so a browser frontend
-on a different port can call them directly.
+on a different port (or opened as a local file) can call them directly.
+
+### Frontend dashboard
+
+The dashboard is a static site with no build step. With the API server
+running (see above), open `frontend/index.html` in a browser — or, to avoid
+any local-file CORS quirks in some browsers, serve it with a simple local
+server instead:
+
+```bash
+cd frontend
+python -m http.server 8080
+# then open http://localhost:8080
+```
+
+The dashboard polls `http://127.0.0.1:5000/api` every second (hardcoded in
+`frontend/script.js`, line 1). If `backend/api_server.py` is ever run on a
+different host or port, update that line to match.
 
 ---
 
