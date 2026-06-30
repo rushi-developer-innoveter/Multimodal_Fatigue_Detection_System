@@ -31,7 +31,11 @@ header{
 header h1{
     font-size:32px;
     font-weight:700;
-    color:#1f2937;
+    background: linear-gradient(90deg, #FC466B 0%, #3F5EFB 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
 }
 
 header p{
@@ -128,6 +132,14 @@ header p{
     justify-content:space-between;
     align-items:center;
     margin-bottom:20px;
+}
+
+.feature-header h2 {
+    background: linear-gradient(90deg, #d53369 0%, #daae51 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
 }
 
 .feature-header button{
