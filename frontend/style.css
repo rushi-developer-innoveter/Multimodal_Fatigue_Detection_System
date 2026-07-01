@@ -128,9 +128,6 @@ header p{
 }
 
 .feature-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
     margin-bottom:20px;
 }
 
@@ -141,21 +138,6 @@ header p{
     color: transparent;
     -webkit-text-fill-color: transparent;
 
-}
-
-.feature-header button{
-    border:none;
-    background:#2563eb;
-    color:white;
-    padding:12px 22px;
-    border-radius:10px;
-    cursor:pointer;
-    font-size:15px;
-    transition:.3s;
-}
-
-.feature-header button:hover{
-    background:#1d4ed8;
 }
 
 .feature-grid{
@@ -291,3 +273,26 @@ body.dark .dark-mode button{
 
     background:#2563eb;
 }
+
+/* Preserve status colors in dark mode */
+
+body.dark .status-alert{
+    color:#16a34a !important;
+}
+
+body.dark .status-fatigued{
+    color:#dc2626 !important;
+}
+
+body.dark .status-no_face_detected{
+    color:#d97706 !important;
+}
+
+body.dark .alarm-on{
+    color:#dc2626 !important;
+}
+
+body.dark .alarm-off{
+    color:#16a34a !important;
+}
+

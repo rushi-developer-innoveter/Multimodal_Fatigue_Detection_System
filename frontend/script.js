@@ -12,10 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadDashboard();
 
-  document
-      .getElementById("refreshBtn")
-      .addEventListener("click", loadDashboard);
-
   setInterval(loadDashboard, 1000);
 
   const themeBtn = document.getElementById("themeBtn");
